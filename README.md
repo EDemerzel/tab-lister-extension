@@ -7,6 +7,7 @@ Tab Lister is a Chrome extension that lists all open tabs, allows you to copy th
 - List all open tabs in the browser.
 - Copy the list of tabs to the clipboard.
 - Save the list of tabs as a text file.
+- Reopen tabs from a saved file.
 
 ## Installation
 
