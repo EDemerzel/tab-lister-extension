@@ -16,6 +16,9 @@ function listTabs() {
       return;
     }
     
+    // Clear the list before adding new items
+    list.innerHTML = '';
+
     // Use a Set to deduplicate the tabs based on their URL
     const uniqueTabs = new Set();
     
