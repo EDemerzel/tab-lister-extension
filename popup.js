@@ -8,26 +8,27 @@ function listTabs() {
       console.error('Error querying tabs: ', chrome.runtime.lastError.message);
       return;
     }
-
+    
     // Get the element where the list of tabs will be displayed
     const list = document.getElementById('tabsList');
     if (!list) {
       console.error('Element with id "tabsList" not found.');
       return;
     }
-
+    
     // Use a Set to deduplicate the tabs based on their URL
     const uniqueTabs = new Set();
-
+    
     // Iterate through each tab and create list items for them
     tabs.forEach(tab => {
       if (uniqueTabs.has(tab.url)) {
         return; // Skip duplicate URLs
       }
       uniqueTabs.add(tab.url);
-
+      
       // Create a new list item for the tab
       const listItem = document.createElement('li');
+      listItem.style.position = 'relative';
 
       // Create a bold element for the tab title
       const title = document.createElement('b');
@@ -43,9 +44,15 @@ function listTabs() {
       url.style.color = '#0645AD'; // Set the link color for better visibility
 
       // Create a button to copy the URL to the clipboard
-      const copyButton = document.createElement('button');
-      copyButton.textContent = 'Copy URL';
-      copyButton.style.marginLeft = '10px';
+      const copyButton = document.createElement('img');
+      copyButton.src = 'icons/copy-icon16.png'; // Set the image source to a copy icon
+      copyButton.alt = 'Copy URL';
+      copyButton.style.position = 'absolute';
+      copyButton.style.top = '5px';
+      copyButton.style.right = '5px';
+      copyButton.style.cursor = 'pointer';
+      copyButton.style.width = '16px';
+      copyButton.style.height = '16px';
       copyButton.addEventListener('click', () => {
         navigator.clipboard.writeText(tab.url).then(() => {
           // Display a non-blocking toast notification instead of alert
@@ -70,9 +77,9 @@ function listTabs() {
       });
 
       // Append the title, URL, and copy button to the list item
+      listItem.appendChild(copyButton);
       listItem.appendChild(title);
       listItem.appendChild(url);
-      listItem.appendChild(copyButton);
       // Append the list item to the list element in the popup
       list.appendChild(listItem);
     });
@@ -83,11 +90,11 @@ async function copyToClipboard() {
   try {
     // Gather all the list items (tabs) and create a tab-delimited string
     const tabsText = Array.from(document.querySelectorAll('#tabsList li'))
-      .map(li => {
-        const title = li.querySelector('b').textContent; // Get the title text
-        const url = li.querySelector('a').href; // Get the URL
-        return `${title}\t${url}`; // Separate title and URL with a tab character
-      }).join('\n'); // Join each tab's info with a newline
+                         .map(li => {
+      const title = li.querySelector('b').textContent; // Get the title text
+      const url = li.querySelector('a').href; // Get the URL
+      return `${title}\t${url}`; // Separate title and URL with a tab character
+    }).join('\n'); // Join each tab's info with a newline
 
     // Copy the gathered text to the clipboard
     await navigator.clipboard.writeText(tabsText);
@@ -116,14 +123,14 @@ async function saveToFile() {
   try {
     // Gather all the list items (tabs) and create a tab-delimited string
     const tabsText = Array.from(document.querySelectorAll('#tabsList li'))
-      .map(li => {
-        const title = li.querySelector('b').textContent; // Get the title text
-        const url = li.querySelector('a').href; // Get the URL
-        return `${title}\t${url}`; // Separate title and URL with a tab character
-      }).join('\n'); // Join each tab's info with a newline
-
+                         .map(li => {
+      const title = li.querySelector('b').textContent; // Get the title text
+      const url = li.querySelector('a').href; // Get the URL
+      return `${title}\t${url}`; // Separate title and URL with a tab character
+    }).join('\n'); // Join each tab's info with a newline
+    
     // Send a message to the background script to initiate the download
-    const response = await chrome.runtime.sendMessage({ action: "download", data: tabsText });
+    const response = await chrome.runtime.sendMessage({action: "download", data: tabsText});
     // Handle potential errors that could occur while sending the message
     if (chrome.runtime.lastError) {
       console.error('Error sending message: ', chrome.runtime.lastError.message);
