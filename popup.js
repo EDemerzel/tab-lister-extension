@@ -154,9 +154,48 @@ async function saveToFile() {
   }
 }
 
+// Function to reopen tabs from a previously saved file
+async function reopenTabsFromFile() {
+  // Create a file input element to select the file
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.txt';
+
+  // When the user selects a file
+  input.onchange = (event) => {
+    const file = event.target.files[0];
+    if (!file) {
+      return;
+    }
+
+    // Read the content of the file
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target.result;
+      // Split the content by new lines to get each URL
+      const urls = content.split('\n').map(line => line.split('\t')[1].trim());
+
+      // Open each URL in a new tab
+      urls.forEach(url => {
+        if (url) {
+          chrome.tabs.create({ url: url });
+        }
+      });
+    };
+
+    // Read the file as text
+    reader.readAsText(file);
+  };
+
+  // Trigger the file input
+  input.click();
+}
+
 // Event listener to list tabs when the DOM content is loaded
 document.addEventListener('DOMContentLoaded', listTabs);
 // Event listener for the "Copy to Clipboard" button
 document.getElementById('copyButton').addEventListener('click', copyToClipboard);
 // Event listener for the "Save as File" button
 document.getElementById('saveButton').addEventListener('click', saveToFile);
+// Event listener for the "Reopen Tabs from File" button
+document.getElementById('reopenButton').addEventListener('click', reopenTabsFromFile);
