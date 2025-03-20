@@ -6,7 +6,7 @@
   "permissions": [
     "tabs",         // Allow access to query open tabs
     "activeTab",    // Provides temporary access to the current active tab
-    "clipboardWrite", // Grants permission to write data to the clipboard
+    "clipboardWrite" // Grants permission to write data to the clipboard
   ],
   "action": {
     "default_popup": "popup.html", // Specifies the HTML file launched when clicking the extension icon
