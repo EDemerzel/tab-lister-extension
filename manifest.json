@@ -1,13 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Tab Lister",
-  "version": "1.2",
+  "version": "1.3",
   "description": "List all open tabs, copy them to clipboard, or save them as a file.",
   "permissions": [
     "tabs",
     "activeTab",
-    "clipboardWrite",
-    "downloads"
+    "clipboardWrite"
   ],
   "action": {
     "default_popup": "popup.html",

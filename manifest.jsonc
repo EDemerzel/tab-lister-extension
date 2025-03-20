@@ -1,13 +1,12 @@
 {
   "manifest_version": 3, // Required for Chrome extensions now using Manifest V3
   "name": "Tab Lister", // Display name of the extension
-  "version": "1.2",  // Versioning; update on any new release or changes
+  "version": "1.3",  // Versioning; update on any new release or changes
   "description": "List all open tabs, copy them to clipboard, or save them as a file.",
   "permissions": [
     "tabs",         // Allow access to query open tabs
     "activeTab",    // Provides temporary access to the current active tab
     "clipboardWrite", // Grants permission to write data to the clipboard
-    "downloads"     // Enables file download functionality
   ],
   "action": {
     "default_popup": "popup.html", // Specifies the HTML file launched when clicking the extension icon
