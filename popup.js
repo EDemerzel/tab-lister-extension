@@ -16,14 +16,39 @@ function showToast(message) {
   toast.style.padding = '10px 20px';
   toast.style.borderRadius = '5px';
   toast.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.2)';
+  toast.style.zIndex = '10000';
   
   // Add toast to the document
   document.body.appendChild(toast);
   
   // Remove toast after 3 seconds
   setTimeout(() => {
-    document.body.removeChild(toast);
+    if (document.body.contains(toast)) {
+      document.body.removeChild(toast);
+    }
   }, 3000);
+}
+
+// ------------------------
+// Utility: Clean Progress Container
+// ------------------------
+// Safely removes progress container if it exists
+function cleanupProgressContainer(progressContainer) {
+  if (progressContainer && document.body.contains(progressContainer)) {
+    document.body.removeChild(progressContainer);
+  }
+}
+
+// ------------------------
+// Utility: Validate URL
+// ------------------------
+// Validates that a URL is safe to open (http/https only)
+function isValidUrl(url) {
+  if (!url || typeof url !== 'string') {
+    return false;
+  }
+  const trimmedUrl = url.trim();
+  return trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://');
 }
 
 // ------------------------
@@ -35,6 +60,7 @@ function listTabs() {
     // Check for runtime errors (e.g. invalid permissions)
     if (chrome.runtime.lastError) {
       console.error('Error querying tabs: ', chrome.runtime.lastError.message);
+      showToast('Error loading tabs. Please try again.');
       return;
     }
     
@@ -49,8 +75,14 @@ function listTabs() {
     list.innerHTML = '';
     const uniqueTabs = new Set();
     
+    // Limit processing for performance (max 500 tabs)
+    const tabsToProcess = tabs.slice(0, 500);
+    if (tabs.length > 500) {
+      showToast(`Showing first 500 of ${tabs.length} tabs for performance.`);
+    }
+    
     // Iterate over each tab and build the UI elements for each unique tab.
-    tabs.forEach(tab => {
+    tabsToProcess.forEach(tab => {
       if (uniqueTabs.has(tab.url)) {
         return;
       }
@@ -84,13 +116,16 @@ function listTabs() {
       copyButton.style.height = '16px';
       
       // Add an event listener to copy the URL when the button is clicked.
-      copyButton.addEventListener('click', () => {
+      copyButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         navigator.clipboard.writeText(tab.url)
           .then(() => {
             showToast("URL copied to clipboard!");
           })
           .catch(err => {
             console.error('Could not copy URL: ', err);
+            showToast('Failed to copy URL to clipboard.');
           });
       });
       
@@ -117,11 +152,17 @@ async function copyToClipboard() {
       })
       .join('\n'); // Separate each tab with a newline.
 
+    if (!tabsText.trim()) {
+      showToast('No tabs to copy.');
+      return;
+    }
+
     // Write the formatted string to the clipboard
     await navigator.clipboard.writeText(tabsText);
     showToast("Copied to clipboard!");
   } catch (err) {
     console.error('Could not copy text: ', err);
+    showToast('Failed to copy to clipboard.');
   }
 }
 
@@ -139,6 +180,11 @@ async function saveToFile() {
         return `${title}\t${url}`;
       })
       .join('\n');
+
+    if (!tabsText.trim()) {
+      showToast('No tabs to save.');
+      return;
+    }
 
     // Create a filename with date and time
     const now = new Date();
@@ -158,6 +204,7 @@ async function saveToFile() {
     showToast("File download initiated!");
   } catch (err) {
     console.error('Error saving file: ', err);
+    showToast('Failed to save file.');
   }
 }
 
@@ -192,24 +239,30 @@ async function reopenTabsFromFile() {
     }
     
     const reader = new FileReader();
+    let progressContainer = null;
 
     // Create a progress indicator element.
-    const progressContainer = document.createElement('div');
-    progressContainer.style.position = 'fixed';
-    progressContainer.style.bottom = '10px';
-    progressContainer.style.left = '50%';
-    progressContainer.style.transform = 'translateX(-50%)';
-    progressContainer.style.backgroundColor = '#fff';
-    progressContainer.style.border = '1px solid #ccc';
-    progressContainer.style.padding = '5px 10px';
-    progressContainer.style.borderRadius = '5px';
-    progressContainer.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
-    progressContainer.textContent = 'Reading file: 0%';
-    document.body.appendChild(progressContainer);
+    try {
+      progressContainer = document.createElement('div');
+      progressContainer.style.position = 'fixed';
+      progressContainer.style.bottom = '10px';
+      progressContainer.style.left = '50%';
+      progressContainer.style.transform = 'translateX(-50%)';
+      progressContainer.style.backgroundColor = '#fff';
+      progressContainer.style.border = '1px solid #ccc';
+      progressContainer.style.padding = '5px 10px';
+      progressContainer.style.borderRadius = '5px';
+      progressContainer.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
+      progressContainer.style.zIndex = '10000';
+      progressContainer.textContent = 'Reading file: 0%';
+      document.body.appendChild(progressContainer);
+    } catch (err) {
+      console.error('Error creating progress container:', err);
+    }
     
     // Safeguard 3: Set up progress event handler.
     reader.onprogress = (evt) => {
-      if (evt.lengthComputable) {
+      if (evt.lengthComputable && progressContainer) {
         const percentLoaded = Math.round((evt.loaded / evt.total) * 100);
         progressContainer.textContent = `Reading file: ${percentLoaded}%`;
       }
@@ -217,24 +270,73 @@ async function reopenTabsFromFile() {
 
     // When file read is complete.
     reader.onload = (e) => {
-      document.body.removeChild(progressContainer); // Remove progress indicator.
-      const content = e.target.result;
-      // Extract URLs assuming each line is tab-separated and the URL is the second field.
-      const urls = content.split('\n').map(line => {
-        const parts = line.split('\t');
-        return parts[1] ? parts[1].trim() : '';
-      });
-      urls.forEach(url => {
-        if (url) {
-          chrome.tabs.create({ url: url });
+      try {
+        cleanupProgressContainer(progressContainer);
+        const content = e.target.result;
+        
+        if (!content || typeof content !== 'string') {
+          showToast('File appears to be empty or invalid.');
+          return;
         }
-      });
+        
+        // Extract URLs assuming each line is tab-separated and the URL is the second field.
+        const lines = content.split('\n').filter(line => line.trim());
+        const validUrls = [];
+        let invalidUrlCount = 0;
+        
+        lines.forEach(line => {
+          const parts = line.split('\t');
+          const url = parts[1] ? parts[1].trim() : '';
+          
+          if (isValidUrl(url)) {
+            validUrls.push(url);
+          } else if (url) {
+            invalidUrlCount++;
+          }
+        });
+        
+        if (validUrls.length === 0) {
+          showToast('No valid URLs found in file.');
+          return;
+        }
+        
+        // Limit the number of tabs to open (max 50 for performance/safety)
+        const maxTabs = 50;
+        const urlsToOpen = validUrls.slice(0, maxTabs);
+        
+        if (validUrls.length > maxTabs) {
+          showToast(`Opening first ${maxTabs} of ${validUrls.length} valid URLs.`);
+        } else if (invalidUrlCount > 0) {
+          showToast(`Opened ${urlsToOpen.length} tabs, skipped ${invalidUrlCount} invalid URLs.`);
+        } else {
+          showToast(`Opening ${urlsToOpen.length} tabs.`);
+        }
+        
+        // Open the validated URLs
+        urlsToOpen.forEach((url, index) => {
+          // Add a small delay between tab creation to avoid overwhelming the browser
+          setTimeout(() => {
+            chrome.tabs.create({ url: url });
+          }, index * 100); // 100ms delay between each tab
+        });
+        
+      } catch (error) {
+        console.error('Error processing file:', error);
+        cleanupProgressContainer(progressContainer);
+        showToast('Error processing file.');
+      }
     };
 
     // Handle read errors.
     reader.onerror = () => {
-      document.body.removeChild(progressContainer);
+      cleanupProgressContainer(progressContainer);
       showToast("Error reading file.");
+    };
+
+    // Handle abort events.
+    reader.onabort = () => {
+      cleanupProgressContainer(progressContainer);
+      showToast("File reading was aborted.");
     };
 
     // Read file as plain text.
@@ -255,3 +357,22 @@ document.addEventListener('DOMContentLoaded', listTabs);
 document.getElementById('copyButton').addEventListener('click', copyToClipboard);
 document.getElementById('saveButton').addEventListener('click', saveToFile);
 document.getElementById('reopenButton').addEventListener('click', reopenTabsFromFile);
+
+// Add keyboard shortcuts for accessibility
+document.addEventListener('keydown', (e) => {
+  // Ctrl+C or Cmd+C for copy
+  if ((e.ctrlKey || e.metaKey) && e.key === 'c' && !e.target.matches('input, textarea')) {
+    e.preventDefault();
+    copyToClipboard();
+  }
+  // Ctrl+S or Cmd+S for save
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    saveToFile();
+  }
+  // Ctrl+O or Cmd+O for open
+  if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+    e.preventDefault();
+    reopenTabsFromFile();
+  }
+});

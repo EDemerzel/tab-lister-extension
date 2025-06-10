@@ -10,13 +10,19 @@ _Tab Lister is a Chrome extension that lists all open tabs, allowing you to copy
   _This permission is required to access all open tabs in the browser, which is essential for listing the tabs. Without it, the extension cannot retrieve the needed tab information._
 
 - **activeTab justification**
-  _The “activeTab” permission provides temporary access to the tab that the user is interacting with. It is necessary to display tab details and handle interactions such as copying, saving, and reloading tabs._
+  _The "activeTab" permission provides temporary access to the tab that the user is interacting with. It is necessary to display tab details and handle interactions such as copying, saving, and reloading tabs._
 
 - **clipboardWrite justification**
-  _This permission is core to the extension’s functionality. It allows the extension to copy the list of tabs to the clipboard when the user clicks the "Copy to Clipboard" button._
-
-- **downloads justification**  
-  _The extension uses this permission to trigger file downloads when saving the list of tabs as a text file with a timestamped filename. This is a critical function for the extension’s purpose._
+  _This permission is core to the extension's functionality. It allows the extension to copy the list of tabs to the clipboard when the user clicks the "Copy to Clipboard" button._
 
 **Are you using remote code?**  
-_No, I am not using remote code. All JavaScript code (and any other code) is included locally within the extension’s package, and no external files are loaded or eval’d._
+_No, I am not using remote code. All JavaScript code (and any other code) is included locally within the extension's package, and no external files are loaded or eval'd._
+
+## Additional Security Features
+
+- File type validation (only .txt files accepted)
+- File size limits (maximum 2MB)
+- URL validation (only http/https URLs are opened)
+- Tab opening limits (maximum 50 tabs per file for performance)
+- Progress indicators for file operations
+- Comprehensive error handling
