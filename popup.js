@@ -1,11 +1,12 @@
-// popup.js
-
-// Function to show a toast notification with a given message
+// ------------------------
+// Utility: Show Toast Notification
+// ------------------------
+// Displays a transient notification in the popup window.
 function showToast(message) {
-  // Create a div element for the toast
+  // Create a toast element with the provided message.
   const toast = document.createElement('div');
   toast.textContent = message;
-  // Style the toast
+  // Set positioning and styling for visibility.
   toast.style.position = 'fixed';
   toast.style.bottom = '20px';
   toast.style.left = '50%';
@@ -15,59 +16,95 @@ function showToast(message) {
   toast.style.padding = '10px 20px';
   toast.style.borderRadius = '5px';
   toast.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.2)';
-  // Append the toast to the body
+  toast.style.zIndex = '10000';
+  
+  // Add toast to the document
   document.body.appendChild(toast);
-  // Remove the toast after 3 seconds
+  
+  // Remove toast after 3 seconds
   setTimeout(() => {
-    document.body.removeChild(toast);
+    if (document.body.contains(toast)) {
+      document.body.removeChild(toast);
+    }
   }, 3000);
 }
 
-// Function to list all open tabs in the browser
+// ------------------------
+// Utility: Clean Progress Container
+// ------------------------
+// Safely removes progress container if it exists
+function cleanupProgressContainer(progressContainer) {
+  if (progressContainer && document.body.contains(progressContainer)) {
+    document.body.removeChild(progressContainer);
+  }
+}
+
+// ------------------------
+// Utility: Validate URL
+// ------------------------
+// Validates that a URL is safe to open (http/https only)
+function isValidUrl(url) {
+  if (!url || typeof url !== 'string') {
+    return false;
+  }
+  const trimmedUrl = url.trim();
+  return trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://');
+}
+
+// ------------------------
+// Function: List Tabs
+// ------------------------
+// Retrieves all open tabs, removes duplicate URLs, and displays them as clickable list items.
 function listTabs() {
-  // Query all open tabs
   chrome.tabs.query({}, (tabs) => {
+    // Check for runtime errors (e.g. invalid permissions)
     if (chrome.runtime.lastError) {
       console.error('Error querying tabs: ', chrome.runtime.lastError.message);
+      showToast('Error loading tabs. Please try again.');
       return;
     }
     
-    // Get the list element to display the tabs
+    // Get the list container element from popup.html
     const list = document.getElementById('tabsList');
     if (!list) {
       console.error('Element with id "tabsList" not found.');
       return;
     }
     
-    // Clear the list
+    // Clear any existing list items
     list.innerHTML = '';
     const uniqueTabs = new Set();
     
-    // Iterate over each tab
-    tabs.forEach(tab => {
-      // Skip duplicate tabs
+    // Limit processing for performance (max 500 tabs)
+    const tabsToProcess = tabs.slice(0, 500);
+    if (tabs.length > 500) {
+      showToast(`Showing first 500 of ${tabs.length} tabs for performance.`);
+    }
+    
+    // Iterate over each tab and build the UI elements for each unique tab.
+    tabsToProcess.forEach(tab => {
       if (uniqueTabs.has(tab.url)) {
         return;
       }
       uniqueTabs.add(tab.url);
       
-      // Create a list item for the tab
+      // Create the list item container
       const listItem = document.createElement('li');
       listItem.style.position = 'relative';
-
-      // Create a bold element for the tab title
+      
+      // Create and configure the title element (bold)
       const title = document.createElement('b');
       title.textContent = tab.title.replace(/\s*-\s*/g, ' ').trim();
-
-      // Create a link element for the tab URL
+      
+      // Create and configure the link element for the tab URL
       const url = document.createElement('a');
       url.href = tab.url;
       url.textContent = tab.url;
-      url.target = '_blank';
+      url.target = '_blank'; // Opens link in a new tab/window
       url.style.display = 'block';
       url.style.color = '#0645AD';
-
-      // Create an image element for the copy button
+      
+      // Create a copy button using an image icon.
       const copyButton = document.createElement('img');
       copyButton.src = 'icons/copy-icon16.png';
       copyButton.alt = 'Copy URL';
@@ -77,125 +114,265 @@ function listTabs() {
       copyButton.style.cursor = 'pointer';
       copyButton.style.width = '16px';
       copyButton.style.height = '16px';
-      // Add click event listener to copy the URL to clipboard
-      copyButton.addEventListener('click', () => {
-        navigator.clipboard.writeText(tab.url).then(() => {
-          showToast("URL copied to clipboard!");
-        }).catch(err => {
-          console.error('Could not copy URL: ', err);
-        });
+      
+      // Add an event listener to copy the URL when the button is clicked.
+      copyButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        navigator.clipboard.writeText(tab.url)
+          .then(() => {
+            showToast("URL copied to clipboard!");
+          })
+          .catch(err => {
+            console.error('Could not copy URL: ', err);
+            showToast('Failed to copy URL to clipboard.');
+          });
       });
-
-      // Append the elements to the list item
+      
+      // Append all elements to the list item, then to the list.
       listItem.appendChild(copyButton);
       listItem.appendChild(title);
       listItem.appendChild(url);
-      // Append the list item to the list
       list.appendChild(listItem);
     });
   });
 }
 
-// Function to copy the list of tabs to the clipboard
+// ------------------------
+// Function: Copy Tabs to Clipboard
+// ------------------------
+// Aggregates tab details into a tab-separated string and copies it to the clipboard.
 async function copyToClipboard() {
   try {
-    // Convert the list of tab elements into a formatted string
     const tabsText = Array.from(document.querySelectorAll('#tabsList li'))
       .map(li => {
-        // Extract the title text from the <b> element within the list item
         const title = li.querySelector('b').textContent;
-        // Extract the URL from the <a> element within the list item
         const url = li.querySelector('a').href;
-        // Format the title and URL as a tab-separated string
-        return `${title}\t${url}`;
+        return `${title}\t${url}`; // Format: title, then URL, separated by a tab.
       })
-      // Join all the formatted strings with a newline character
-      .join('\n');
+      .join('\n'); // Separate each tab with a newline.
+
+    if (!tabsText.trim()) {
+      showToast('No tabs to copy.');
+      return;
+    }
 
     // Write the formatted string to the clipboard
     await navigator.clipboard.writeText(tabsText);
-
-    // Show a toast notification indicating the text was copied successfully
     showToast("Copied to clipboard!");
   } catch (err) {
-    // Log an error message if the text could not be copied
     console.error('Could not copy text: ', err);
+    showToast('Failed to copy to clipboard.');
   }
 }
 
-// Function to save the list of tabs as a file
+// ------------------------
+// Function: Save Tabs as File
+// ------------------------
+// Creates a data URL from the tab list text and triggers a download with a timestamped filename.
 async function saveToFile() {
   try {
-    // Convert the list of tab elements into a formatted string
+    // Generate the tab information string from the list items.
     const tabsText = Array.from(document.querySelectorAll('#tabsList li'))
       .map(li => {
-        // Extract the title text from the <b> element within the list item
         const title = li.querySelector('b').textContent;
-        // Extract the URL from the <a> element within the list item
         const url = li.querySelector('a').href;
-        // Format the title and URL as a tab-separated string
         return `${title}\t${url}`;
       })
-      // Join all the formatted strings with a newline character
       .join('\n');
-    
-    // Send a message to the background script to initiate the download
-    const response = await chrome.runtime.sendMessage({action: "download", data: tabsText});
-    if (chrome.runtime.lastError) {
-      console.error('Error sending message: ', chrome.runtime.lastError.message);
+
+    if (!tabsText.trim()) {
+      showToast('No tabs to save.');
       return;
     }
-    if (response && response.error) {
-      console.error('Error from background script: ', response.error);
-    }
+
+    // Create a filename with date and time
+    const now = new Date();
+    const pad = (n) => n.toString().padStart(2, '0');
+    const filename = `tabs_list_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.txt`;
+
+    // Create a data URL that encodes the tabs information.
+    const downloadLink = document.createElement("a");
+    downloadLink.href = "data:text/plain;charset=utf-8," + encodeURIComponent(tabsText);
+    downloadLink.download = filename; // Set the generated filename.
+    
+    // Append the link, simulate a click, and remove it.
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    
+    showToast("File download initiated!");
   } catch (err) {
-    // Log an error message if there was an issue sending the message
-    console.error('Error sending message: ', err);
+    console.error('Error saving file: ', err);
+    showToast('Failed to save file.');
   }
 }
 
-// Function to reopen tabs from a previously saved file
+// ------------------------
+// Function: Reopen Tabs from File (Updated)
+// ------------------------
+// Reads a saved text file, validates its type and size, shows a progress indicator during file read,
+// extracts URLs, and opens each URL in a new tab.
 async function reopenTabsFromFile() {
-  // Create a file input element to select the file
+  // Create a hidden file input element.
   const input = document.createElement('input');
   input.type = 'file';
-  input.accept = '.txt';
+  input.accept = '.txt';  // Restrict file selection to text files.
 
-  // When the user selects a file
   input.onchange = (event) => {
     const file = event.target.files[0];
     if (!file) {
       return;
     }
-
-    // Read the content of the file
+    
+    // Safeguard 1: Validate file extension.
+    if (!file.name.toLowerCase().endsWith('.txt')) {
+      showToast("Invalid file type. Please select a .txt file.");
+      return;
+    }
+    
+    // Safeguard 2: Validate file size (e.g., maximum 2MB).
+    const MAX_SIZE = 2 * 1024 * 1024; // 2MB in bytes.
+    if (file.size > MAX_SIZE) {
+      showToast("File too large. Please select a file smaller than 2MB.");
+      return;
+    }
+    
     const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target.result;
-      // Split the content by new lines to get each URL
-      const urls = content.split('\n').map(line => line.split('\t')[1].trim());
+    let progressContainer = null;
 
-      // Open each URL in a new tab
-      urls.forEach(url => {
-        if (url) {
-          chrome.tabs.create({ url: url });
-        }
-      });
+    // Create a progress indicator element.
+    try {
+      progressContainer = document.createElement('div');
+      progressContainer.style.position = 'fixed';
+      progressContainer.style.bottom = '10px';
+      progressContainer.style.left = '50%';
+      progressContainer.style.transform = 'translateX(-50%)';
+      progressContainer.style.backgroundColor = '#fff';
+      progressContainer.style.border = '1px solid #ccc';
+      progressContainer.style.padding = '5px 10px';
+      progressContainer.style.borderRadius = '5px';
+      progressContainer.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
+      progressContainer.style.zIndex = '10000';
+      progressContainer.textContent = 'Reading file: 0%';
+      document.body.appendChild(progressContainer);
+    } catch (err) {
+      console.error('Error creating progress container:', err);
+    }
+    
+    // Safeguard 3: Set up progress event handler.
+    reader.onprogress = (evt) => {
+      if (evt.lengthComputable && progressContainer) {
+        const percentLoaded = Math.round((evt.loaded / evt.total) * 100);
+        progressContainer.textContent = `Reading file: ${percentLoaded}%`;
+      }
     };
 
-    // Read the file as text
+    // When file read is complete.
+    reader.onload = (e) => {
+      try {
+        cleanupProgressContainer(progressContainer);
+        const content = e.target.result;
+        
+        if (!content || typeof content !== 'string') {
+          showToast('File appears to be empty or invalid.');
+          return;
+        }
+        
+        // Extract URLs assuming each line is tab-separated and the URL is the second field.
+        const lines = content.split('\n').filter(line => line.trim());
+        const validUrls = [];
+        let invalidUrlCount = 0;
+        
+        lines.forEach(line => {
+          const parts = line.split('\t');
+          const url = parts[1] ? parts[1].trim() : '';
+          
+          if (isValidUrl(url)) {
+            validUrls.push(url);
+          } else if (url) {
+            invalidUrlCount++;
+          }
+        });
+        
+        if (validUrls.length === 0) {
+          showToast('No valid URLs found in file.');
+          return;
+        }
+        
+        // Limit the number of tabs to open (max 50 for performance/safety)
+        const maxTabs = 50;
+        const urlsToOpen = validUrls.slice(0, maxTabs);
+        
+        if (validUrls.length > maxTabs) {
+          showToast(`Opening first ${maxTabs} of ${validUrls.length} valid URLs.`);
+        } else if (invalidUrlCount > 0) {
+          showToast(`Opened ${urlsToOpen.length} tabs, skipped ${invalidUrlCount} invalid URLs.`);
+        } else {
+          showToast(`Opening ${urlsToOpen.length} tabs.`);
+        }
+        
+        // Open the validated URLs
+        urlsToOpen.forEach((url, index) => {
+          // Add a small delay between tab creation to avoid overwhelming the browser
+          setTimeout(() => {
+            chrome.tabs.create({ url: url });
+          }, index * 100); // 100ms delay between each tab
+        });
+        
+      } catch (error) {
+        console.error('Error processing file:', error);
+        cleanupProgressContainer(progressContainer);
+        showToast('Error processing file.');
+      }
+    };
+
+    // Handle read errors.
+    reader.onerror = () => {
+      cleanupProgressContainer(progressContainer);
+      showToast("Error reading file.");
+    };
+
+    // Handle abort events.
+    reader.onabort = () => {
+      cleanupProgressContainer(progressContainer);
+      showToast("File reading was aborted.");
+    };
+
+    // Read file as plain text.
     reader.readAsText(file);
   };
 
-  // Trigger the file input
+  // Trigger the file selection dialog.
   input.click();
 }
 
-// Event listener to list tabs when the DOM content is loaded
+// ------------------------
+// Event Listeners
+// ------------------------
+// Initialize tab listing when the popup loads.
 document.addEventListener('DOMContentLoaded', listTabs);
-// Event listener for the "Copy to Clipboard" button
+
+// Attach button listeners to handle copying, saving, and reopening tabs.
 document.getElementById('copyButton').addEventListener('click', copyToClipboard);
-// Event listener for the "Save as File" button
 document.getElementById('saveButton').addEventListener('click', saveToFile);
-// Event listener for the "Reopen Tabs from File" button
 document.getElementById('reopenButton').addEventListener('click', reopenTabsFromFile);
+
+// Add keyboard shortcuts for accessibility
+document.addEventListener('keydown', (e) => {
+  // Ctrl+C or Cmd+C for copy
+  if ((e.ctrlKey || e.metaKey) && e.key === 'c' && !e.target.matches('input, textarea')) {
+    e.preventDefault();
+    copyToClipboard();
+  }
+  // Ctrl+S or Cmd+S for save
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    saveToFile();
+  }
+  // Ctrl+O or Cmd+O for open
+  if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+    e.preventDefault();
+    reopenTabsFromFile();
+  }
+});

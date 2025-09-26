@@ -1,37 +1,120 @@
+/* Default styles for the popup body */
 body {
-  font-family: Arial, sans-serif;
+  font-family: Arial, sans-serif; /* Use a clean sans-serif font */
   margin: 10px;
-  background-color: #f4f4f4;
-  color: #333;
+  background-color: #f4f4f4; /* Light background color */
+  color: #333; /* Dark text for contrast */
+  min-width: 350px; /* Ensure minimum width for usability */
+  max-height: 600px; /* Limit height to prevent oversized popup */
 }
 
+/* Style for the main heading */
 h1 {
   font-size: 18px;
+  margin-bottom: 15px;
 }
 
+/* Styling for the unordered list that holds the tabs */
 ul {
-  list-style-type: none;
+  list-style-type: none; /* Remove default bullet points */
   padding: 0;
+  max-height: 400px; /* Limit height for scrolling */
+  overflow-y: auto; /* Add scroll if needed */
 }
 
+/* List items styling - individual tab entries */
 li {
-  background-color: #fff;
-  border: 1px solid #ddd;
+  background-color: #fff; /* White background for each tab */
+  border: 1px solid #ddd; /* Light grey border */
   margin-bottom: 5px;
   padding: 8px;
-  border-radius: 4px;
+  border-radius: 4px; /* Rounded corners */
+  position: relative; /* For absolute positioning of copy button */
 }
 
+/* Improve hover state for list items */
+li:hover {
+  background-color: #f8f9fa;
+  border-color: #c6c8ca;
+}
+
+/* Button styling for action buttons */
 button {
-  background-color: #4285f4;
-  color: white;
+  background-color: #4285f4; /* Blue background */
+  color: white; /* White text */
   border: none;
   padding: 10px 20px;
   margin-top: 10px;
+  margin-right: 5px;
   border-radius: 4px;
-  cursor: pointer;
+  cursor: pointer; /* Pointer cursor on hover */
+  font-size: 14px;
+  transition: background-color 0.2s ease; /* Smooth transition */
 }
 
+/* Hover effect for buttons */
 button:hover {
+  background-color: #357ae8; /* Darker blue on hover */
+}
+
+/* Focus styles for accessibility */
+button:focus {
+  outline: 2px solid #357ae8;
+  outline-offset: 2px;
   background-color: #357ae8;
+}
+
+/* Focus styles for links */
+a:focus {
+  outline: 2px solid #4285f4;
+  outline-offset: 2px;
+}
+
+/* Copy button hover effect */
+img[alt="Copy URL"]:hover {
+  opacity: 0.7;
+  transform: scale(1.1);
+  transition: all 0.2s ease;
+}
+
+/* Copy button focus styles */
+img[alt="Copy URL"]:focus {
+  outline: 2px solid #4285f4;
+  outline-offset: 2px;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 400px) {
+  body {
+    min-width: 300px;
+    margin: 5px;
+  }
+  
+  button {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+  
+  h1 {
+    font-size: 16px;
+  }
+}
+
+/* Scrollbar styling for webkit browsers */
+ul::-webkit-scrollbar {
+  width: 8px;
+}
+
+ul::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+ul::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+ul::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }

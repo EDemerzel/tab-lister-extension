@@ -1,21 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
+  <!-- Meta tags set encoding and viewport properties -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Title displayed on the extension popup -->
   <title>Tab Lister</title>
+  <!-- Link to external CSS for styling the popup UI -->
   <link rel="stylesheet" type="text/css" href="style.css">
 </head>
-
 <body>
+  <!-- Main header of the popup -->
   <h1>Open Tabs</h1>
-  <ul id="tabsList"></ul>
-  <button id="copyButton">Copy to Clipboard</button>
-  <button id="saveButton">Save as File</button>
-  <button id="reopenButton">Reopen Tabs from File</button>
+  
+  <!-- An unordered list where opened tab items will be injected -->
+  <ul id="tabsList" role="list" aria-label="List of open browser tabs"></ul>
+  
+  <!-- Control buttons with clear IDs for event handling in popup.js -->
+  <button id="copyButton" title="Copy tabs to clipboard (Ctrl+C)" aria-label="Copy all tabs to clipboard">
+    Copy to Clipboard
+  </button>
+  <button id="saveButton" title="Save tabs as file (Ctrl+S)" aria-label="Save all tabs as a text file">
+    Save as File
+  </button>
+  <button id="reopenButton" title="Reopen tabs from file (Ctrl+O)" aria-label="Open tabs from a saved text file">
+    Reopen Tabs from File
+  </button>
+  
+  <!-- Includes popup.js, which contains the business logic for the extension -->
   <script src="popup.js"></script>
 </body>
-
-
 </html>
